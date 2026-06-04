@@ -48,4 +48,62 @@ nextflow_process {
 
     }
 
+    test("SIVmac deletion read is short under strict overlap filter") {
+
+        when {
+            params {
+                min_overlap = 0.95
+                split_read_filter_mode = 'strict'
+                output_format = 'fasta'
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    ["sivmac", "$baseDir/tests/input/split_reads/sivmac_deletion/merged.bam",
+                     "$baseDir/tests/input/split_reads/sivmac_deletion/merged.bam.bai",
+                     "amplicon", file("$baseDir/tests/input/split_reads/sivmac_deletion/amplicon.bed")]
+                )
+                input[1] = "raw"
+                input[2] = file("$baseDir/bin/filter_reads.py")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def filtered = path(process.out.split_reads_fastx.get(0).get(2))
+            assert filtered.readLines().findAll { it.startsWith(">") }.size() == 4
+        }
+
+    }
+
+    test("SIVmac deletion read passes deletion_tolerant overlap filter") {
+
+        when {
+            params {
+                min_overlap = 0.95
+                split_read_filter_mode = 'deletion_tolerant'
+                output_format = 'fasta'
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    ["sivmac", "$baseDir/tests/input/split_reads/sivmac_deletion/merged.bam",
+                     "$baseDir/tests/input/split_reads/sivmac_deletion/merged.bam.bai",
+                     "amplicon", file("$baseDir/tests/input/split_reads/sivmac_deletion/amplicon.bed")]
+                )
+                input[1] = "raw"
+                input[2] = file("$baseDir/bin/filter_reads.py")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def filtered = path(process.out.split_reads_fastx.get(0).get(2))
+            assert filtered.readLines().findAll { it.startsWith(">") }.size() == 5
+        }
+
+    }
+
 }

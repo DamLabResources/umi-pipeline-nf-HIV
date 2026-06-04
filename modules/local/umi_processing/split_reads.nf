@@ -18,6 +18,7 @@ process SPLIT_READS {
     """
         python ${python_filter_reads} \
         --min_overlap ${params.min_overlap} \
+        --split_read_filter_mode ${params.split_read_filter_mode} \
         --output_format ${params.output_format} \
         --adapter_length ${params.adapter_length} \
         --output_filename ${sample}_${target}_${bam.baseName} \

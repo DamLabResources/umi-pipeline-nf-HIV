@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Unit tests for SIVmac split-read fixtures (no Nextflow)."""
+
+import glob
+import os
+import sys
+import tempfile
+import unittest
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO, "bin"))
+from filter_reads import parse_args, filter_reads  # noqa: E402
+
+BED = os.path.join(REPO, "tests/input/split_reads/sivmac_deletion/amplicon.bed")
+BAM = os.path.join(REPO, "tests/input/split_reads/sivmac_deletion/merged.bam")
+
+
+class TestSivmacSplitReads(unittest.TestCase):
+    def _run(self, mode):
+        tmp = tempfile.mkdtemp()
+        args = parse_args(
+            [
+                "-o",
+                tmp,
+                "--min_overlap",
+                "0.95",
+                "--adapter_length",
+                "100",
+                "--split_read_filter_mode",
+                mode,
+                "--output_format",
+                "fasta",
+                "--output_filename",
+                "t",
+                BED,
+                BAM,
+            ]
+        )
+        filter_reads(args)
+        short = 0
+        if os.path.isfile(os.path.join(tmp, "short.fasta")):
+            short = open(os.path.join(tmp, "short.fasta")).read().count(">")
+        filtered = glob.glob(os.path.join(tmp, "*filtered*"))[0]
+        n_filt = open(filtered).read().count(">")
+        return short, n_filt
+
+    def test_strict_marks_deletion_short(self):
+        short, n_filt = self._run("strict")
+        self.assertEqual(short, 1)
+        self.assertEqual(n_filt, 4)
+
+    def test_deletion_tolerant_keeps_deletion(self):
+        short, n_filt = self._run("deletion_tolerant")
+        self.assertEqual(short, 0)
+        self.assertEqual(n_filt, 5)
+
+
+if __name__ == "__main__":
+    unittest.main()

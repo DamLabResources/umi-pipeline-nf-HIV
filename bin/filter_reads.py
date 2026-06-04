@@ -106,6 +106,16 @@ def parse_args(argv):
         default="fasta"
     )
 
+    parser.add_argument(
+        "--split_read_filter_mode",
+        dest="SPLIT_READ_FILTER_MODE",
+        type=str,
+        choices=["strict", "deletion_tolerant"],
+        default="strict",
+        help="strict: require query alignment span vs BED length; "
+        "deletion_tolerant: require reference overlap with BED instead",
+    )
+
     args = parser.parse_args(argv)
 
     return args
@@ -182,11 +192,27 @@ def write_fastq(read, out_f):
             read.query_qualities), file=out_f)
 
 
+def bed_overlap_bp(read, region):
+    """Reference bases of the alignment overlapping the BED interval."""
+    if read.reference_start is None or read.reference_end is None:
+        return 0
+    overlap_start = max(read.reference_start, region["start"])
+    overlap_end = min(read.reference_end, region["end"])
+    return max(0, overlap_end - overlap_start)
+
+
+def is_short_read(read, region, region_length, min_overlap, filter_mode):
+    if filter_mode == "deletion_tolerant":
+        return bed_overlap_bp(read, region) < (region_length * min_overlap)
+    return read.query_alignment_length < (region_length * min_overlap)
+
+
 def filter_reads(args):
     bed_regions = args.BED[0]
     bam_file = args.BAM
     adapter_length = args.ADAPTER_LENGTH
     min_overlap = args.MIN_OVERLAP
+    filter_mode = args.SPLIT_READ_FILTER_MODE
     incl_sec = args.INCL_SEC
     output = args.OUT
     out_format = args.OUT_FORMAT
@@ -241,7 +267,7 @@ def filter_reads(args):
                 write_read(read, output, "concatamer", out_format)
                 continue
 
-            if read.query_alignment_length < (region_length * min_overlap):
+            if is_short_read(read, region, region_length, min_overlap, filter_mode):
                 n_short += 1
                 write_read(read, output, "short", out_format)
                 continue
