@@ -62,6 +62,18 @@ def parse_args(argv):
     )
 
     parser.add_argument(
+        "--max_query_length",
+        dest="MAX_QUERY_LENGTH",
+        type=int,
+        default=None,
+        help=(
+            "Maximum length to pass the long-read filter "
+            "(default: region_length * (2 - min_overlap) + 2 * adapter_length). "
+            "Use a higher value for long Nanopore amplicon reads."
+        ),
+    )
+
+    parser.add_argument(
         "--include_secondary_reads",
         dest="INCL_SEC",
         action="store_true",
@@ -207,11 +219,23 @@ def is_short_read(read, region, region_length, min_overlap, filter_mode):
     return read.query_alignment_length < (region_length * min_overlap)
 
 
+def is_long_read(read, long_threshold, filter_mode):
+    """
+    strict: full query length vs long_threshold (often max_query_length override).
+    deletion_tolerant: aligned span on the query only — not full read length,
+    so internal-deletion ONT reads are not mis-binned as long.
+    """
+    if filter_mode == "deletion_tolerant":
+        return read.query_alignment_length > long_threshold
+    return read.query_length > long_threshold
+
+
 def filter_reads(args):
     bed_regions = args.BED[0]
     bam_file = args.BAM
     adapter_length = args.ADAPTER_LENGTH
     min_overlap = args.MIN_OVERLAP
+    max_query_length = args.MAX_QUERY_LENGTH
     filter_mode = args.SPLIT_READ_FILTER_MODE
     incl_sec = args.INCL_SEC
     output = args.OUT
@@ -234,7 +258,14 @@ def filter_reads(args):
     with pysam.AlignmentFile(bam_file, "rb") as bam:
         region = parse_bed(bed_regions)
         region_length = region["end"] - region["start"]
+        long_threshold = (
+            max_query_length
+            if max_query_length is not None
+            else region_length * (2 - min_overlap) + 2 * adapter_length
+        )
         logging.info("Region: {}".format(region["name"]))
+        logging.info("Long-read threshold: {} bp ({})".format(
+            long_threshold, filter_mode))
 
         for read in bam.fetch(
             contig=region["chr"], start=region["start"], stop=region["end"], until_eof=True
@@ -272,7 +303,7 @@ def filter_reads(args):
                 write_read(read, output, "short", out_format)
                 continue
 
-            if read.query_length > (region_length * ( 2 - min_overlap) + 2 * adapter_length):
+            if is_long_read(read, long_threshold, filter_mode):
                 n_long += 1
                 write_read(read, output, "long", out_format)
                 continue

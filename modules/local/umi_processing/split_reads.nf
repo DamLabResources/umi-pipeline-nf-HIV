@@ -15,12 +15,14 @@ process SPLIT_READS {
     script:
     def include_secondary_reads = params.include_secondary_reads ? "--include_secondary_reads" : ""
     def write_report = params.write_reports ? "--tsv" : ""
+    def max_query_length = params.max_query_length ? "--max_query_length ${params.max_query_length}" : ""
     """
         python ${python_filter_reads} \
         --min_overlap ${params.min_overlap} \
         --split_read_filter_mode ${params.split_read_filter_mode} \
         --output_format ${params.output_format} \
         --adapter_length ${params.adapter_length} \
+        ${max_query_length} \
         --output_filename ${sample}_${target}_${bam.baseName} \
         ${include_secondary_reads} \
         ${write_report} \
