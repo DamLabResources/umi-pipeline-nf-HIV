@@ -103,9 +103,9 @@ workflow OFFLINE_UMI_PROCESSING {
     SUMMARY_CLUSTER_STATS(REFORMAT_FILTER_CLUSTER.out.smolecule_cluster_stats, cluster_summary_cache_dir_nf, umi_cluster_stats_summary)
 
     REFORMAT_FILTER_CLUSTER.out.smolecule_cluster_fastqs
-        .filter { _sample, _type, fastqs, _task_index -> fastqs instanceof List }
         .map { sample, type, fastqs, _task_index ->
-            tuple(sample, type, fastqs)
+            def fastq_list = fastqs instanceof List ? fastqs : [fastqs]
+            tuple(sample, type, fastq_list)
         }
         .set { processed_umis }
 
