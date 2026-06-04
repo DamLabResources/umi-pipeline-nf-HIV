@@ -5,3 +5,4 @@ tests/output
 .nf-test/
 nf-test
 .nf-test.log
+__pycache__/
