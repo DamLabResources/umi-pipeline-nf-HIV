@@ -105,6 +105,8 @@ The pipeline is organized into four main subworkflows, each with its own process
 
 > See the [output documentation](docs/output.md) for a detailed overview of the pipeline outputs and directory structure.
 
+For integrated lentivirus / SIVmac239m2 amplicons (deletion-tolerant split filtering and length-based UMI subclustering), see [docs/lentivirus_amplicons.md](docs/lentivirus_amplicons.md).
+
 ## Live Demo
 
 The **live_demo** is a self-contained example that simulates a nanopore sequencing run with UMI-tagged reads. It allows users to **test the live mode of the pipeline without actual sequencing data** and observe the real-time processing, clustering, and polishing of reads.
