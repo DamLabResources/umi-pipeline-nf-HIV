@@ -148,6 +148,71 @@ nextflow_process {
 
     }
 
+    test("SIVmac length split off keeps one smolecule per UMI cluster") {
+
+        when {
+            params {
+                min_reads_per_cluster = 2
+                max_reads_per_cluster = 20
+                cluster_by_amplicon_length = false
+                output_format = "fasta"
+                filter_strategy_clusters = "random"
+                balance_strands = false
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    "sivmac", "amplicon",
+                    "$baseDir/tests/input/reformat_filter_cluster/sivmac/length_cluster/cluster_deletion_pair"
+                ])
+                input[1] = "raw"
+                input[2] = file("$baseDir/bin/parse_clusters.py")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def smol = process.out.smolecule_cluster_fastqs.get(0).get(2)
+            def smol_files = smol instanceof List ? smol : [smol]
+            assert smol_files.size() == 1
+        }
+
+    }
+
+    test("SIVmac length split on separates deletion haplotypes") {
+
+        when {
+            params {
+                min_reads_per_cluster = 2
+                max_reads_per_cluster = 20
+                cluster_by_amplicon_length = true
+                max_amplicon_length_diff_bp = 100
+                output_format = "fasta"
+                filter_strategy_clusters = "random"
+                balance_strands = false
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    "sivmac", "amplicon",
+                    "$baseDir/tests/input/reformat_filter_cluster/sivmac/length_cluster/cluster_deletion_pair"
+                ])
+                input[1] = "raw"
+                input[2] = file("$baseDir/bin/parse_clusters.py")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def smol = process.out.smolecule_cluster_fastqs.get(0).get(2)
+            def smol_files = smol instanceof List ? smol : [smol]
+            assert smol_files.size() == 2
+        }
+
+    }
+
     test("Should have no output") {
 
         when {

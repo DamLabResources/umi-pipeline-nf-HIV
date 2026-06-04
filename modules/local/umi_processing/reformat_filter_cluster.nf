@@ -17,14 +17,20 @@ process REFORMAT_FILTER_CLUSTER {
     script:
     def balance_strands = params.balance_strands ? "--balance_strands" : ""
     def write_report = params.write_reports ? "--tsv" : ""
+    def cluster_by_length = params.cluster_by_amplicon_length ? "--cluster_by_amplicon_length" : ""
+    def max_len_bp = params.max_amplicon_length_diff_bp != null ? "--max_amplicon_length_diff_bp ${params.max_amplicon_length_diff_bp}" : ""
+    def max_len_pct = params.max_amplicon_length_diff_pct != null ? "--max_amplicon_length_diff_pct ${params.max_amplicon_length_diff_pct}" : ""
     """
         python ${umi_parse_clusters_python} \
         --filter_strategy ${params.filter_strategy_clusters} \
         --min_reads_per_clusters ${params.min_reads_per_cluster} \
         --max_reads_per_clusters ${params.max_reads_per_cluster} \
         --max_dist_umi ${params.max_dist_umi} \
-        --cluster ${cluster} \
+        --clusters ${cluster} \
         --output_format ${params.output_format} \
+        ${cluster_by_length} \
+        ${max_len_bp} \
+        ${max_len_pct} \
         ${balance_strands} \
         ${write_report} \
         -o .

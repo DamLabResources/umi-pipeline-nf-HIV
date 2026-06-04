@@ -105,6 +105,28 @@ def parse_args(argv):
     parser.add_argument(
         "--clusters", dest="CLUSTERS", nargs="+", required=True, type=str, help="cluster fastx files"
     )
+    parser.add_argument(
+        "--cluster_by_amplicon_length",
+        dest="CLUSTER_BY_AMPLICON_LENGTH",
+        action="store_true",
+        help="After UMI-tag subclustering, split by full amplicon length in read headers",
+    )
+
+    parser.add_argument(
+        "--max_amplicon_length_diff_bp",
+        dest="MAX_AMPLICON_LENGTH_DIFF_BP",
+        type=int,
+        default=None,
+        help="Max absolute amplicon length difference within a polishing group",
+    )
+
+    parser.add_argument(
+        "--max_amplicon_length_diff_pct",
+        dest="MAX_AMPLICON_LENGTH_DIFF_PCT",
+        type=float,
+        default=None,
+        help="Max percent amplicon length difference within a polishing group",
+    )
 
     parser.add_argument(
         "--output_format",
@@ -159,6 +181,51 @@ def get_reads(cluster):
             residual_reads.append(read)
             n_residual_reads += 1
     return residual_reads, n_residual_reads
+
+
+def get_read_length(read):
+    return len(get_read_seq(read))
+
+
+def lengths_compatible(length_a, length_b, max_bp, max_pct):
+    diff = abs(length_a - length_b)
+    if max_bp is not None and diff <= max_bp:
+        return True
+    if max_pct is not None:
+        denom = max(length_a, length_b)
+        if denom > 0 and (100.0 * diff / denom) <= max_pct:
+            return True
+    return False
+
+
+def cluster_reads_by_length(reads, max_bp, max_pct):
+    """Single-linkage clustering on amplicon length (from ;seq= header)."""
+    n = len(reads)
+    if n == 0:
+        return []
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i, j):
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            parent[ri] = rj
+
+    lengths = [get_read_length(read) for read in reads]
+    for i in range(n):
+        for j in range(i + 1, n):
+            if lengths_compatible(lengths[i], lengths[j], max_bp, max_pct):
+                union(i, j)
+
+    groups = {}
+    for i, read in enumerate(reads):
+        groups.setdefault(find(i), []).append(read)
+    return list(groups.values())
 
 
 def cluster_reads(reads, max_edit_dist):
@@ -305,7 +372,35 @@ def write_tsv_line(stats_out_filename, cluster_id, cluster_written, reads_found,
               file=out_f)
 
 
-def parse_cluster(min_reads, max_reads, filter, format, cluster, output_folder, balance_strands, tsv, max_edit_dist, stats_out_filename):
+def split_subclusters_by_length(subclusters, cluster_by_length, max_bp, max_pct):
+    if not cluster_by_length:
+        return subclusters
+    if max_bp is None and max_pct is None:
+        logging.warning(
+            "cluster_by_amplicon_length enabled but no bp/pct threshold set; skipping length split"
+        )
+        return subclusters
+    split = []
+    for subcluster in subclusters:
+        split.extend(cluster_reads_by_length(subcluster, max_bp, max_pct))
+    return split
+
+
+def parse_cluster(
+    min_reads,
+    max_reads,
+    filter,
+    format,
+    cluster,
+    output_folder,
+    balance_strands,
+    tsv,
+    max_edit_dist,
+    stats_out_filename,
+    cluster_by_length=False,
+    max_length_diff_bp=None,
+    max_length_diff_pct=None,
+):
     """
     For each input cluster file, read the sequences, break them into subclusters such that
     sequences in each subcluster are similar (i.e. within max_edit_dist of at least one other read),
@@ -314,8 +409,11 @@ def parse_cluster(min_reads, max_reads, filter, format, cluster, output_folder, 
     residual_reads, n_residual_reads = get_reads(cluster)
     cluster_id = get_cluster_id(cluster)
 
-    # Cluster reads into subclusters based on pairwise edit distance
+    # Cluster reads into subclusters based on pairwise edit distance on UMI tag
     subclusters = cluster_reads(residual_reads, max_edit_dist)
+    subclusters = split_subclusters_by_length(
+        subclusters, cluster_by_length, max_length_diff_bp, max_length_diff_pct
+    )
 
     for n_subcluster, subcluster in enumerate(subclusters):
         # Write the subcluster reads (for reference/debugging)
@@ -376,6 +474,9 @@ def parse_cluster_wrapper(args):
     balance_strands = args.BAL_STRANDS
     tsv = args.TSV
     max_edit_dist = args.MAX_EDIT_DIST
+    cluster_by_length = args.CLUSTER_BY_AMPLICON_LENGTH
+    max_length_diff_bp = args.MAX_AMPLICON_LENGTH_DIFF_BP
+    max_length_diff_pct = args.MAX_AMPLICON_LENGTH_DIFF_PCT
 
     stats_out_filename = "split_cluster_stats"
     if tsv:
@@ -413,6 +514,9 @@ def parse_cluster_wrapper(args):
             tsv,
             max_edit_dist,
             stats_out_filename,
+            cluster_by_length,
+            max_length_diff_bp,
+            max_length_diff_pct,
         )
 
 
