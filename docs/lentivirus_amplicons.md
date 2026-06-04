@@ -18,9 +18,11 @@ Short and long targets can be combined in one BED file for multi-target runs.
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `min_overlap` | `0.95` | Fraction of BED span required for retention |
-| `split_read_filter_mode` | `strict` | `strict`: compare `query_alignment_length` to BED length; `deletion_tolerant`: compare **reference overlap** with the BED interval (retains reads with internal deletions that still span the target) |
+| `split_read_filter_mode` | `strict` | `strict`: short = `query_alignment_length`; long = full `query_length` vs BED span. `deletion_tolerant`: short = **reference overlap** with BED; long = **`query_alignment_length`** (not full read length), so ONT reads with internal deletions are not mis-binned as `long` |
 
 Enable deletion tolerance when deletion-rich reads are classified as `short` in verbose stats (`reads_short`).
+
+Set `max_query_length` high enough for Nanopore read lengths (e.g. **3000** for ~595 bp targets, **10000** for ~6.5 kb SLN targets). Without it, the default long threshold (~`region_length + 5%` + adapters) bins almost all ONT reads as `long` even in `deletion_tolerant` mode.
 
 ## Length-based subclustering (same UMI, different haplotype length)
 
