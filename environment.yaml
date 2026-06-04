@@ -1,0 +1,26 @@
+# Host-side runtime for running and testing this pipeline locally.
+# Pipeline processes still run inside Docker/Singularity containers.
+#
+# Create:
+#   conda env create -f environment.yaml -p ./venv
+#
+# Activate:
+#   conda activate ./venv
+#   export JAVA_HOME="$CONDA_PREFIX/lib/jvm"
+#
+# Pin nextflow to 25.x — 26.x may fail to parse this pipeline's config.
+#
+# For pipeline bioinformatics tool dependencies (medaka, samtools, etc.),
+# see environment.yml (used by the container / development profile).
+
+name: umi-pipeline-nf-HIV
+
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - nextflow=25.10.4
+  - nf-test=0.9.5
+  - openjdk=17

@@ -15,7 +15,15 @@ Umi-pipeline-nf is conceptually based on the Snakemake-based UMI analysis pipeli
 
 ## Quick Start
 
-1. Install [`nextflow`](https://www.nextflow.io/).
+1. Install [`nextflow`](https://www.nextflow.io/) (and Java), or use the conda env in this repo:
+
+   ```bash
+   conda env create -f environment.yaml -p ./venv
+   conda activate ./venv
+   export JAVA_HOME="$CONDA_PREFIX/lib/jvm"
+   ```
+
+   `environment.yaml` provides **nextflow**, **openjdk**, and **nf-test** for local runs and tests. Stay on Nextflow **25.x** for now — **26.x** may fail to parse this pipeline's config. For container/tool dependencies (medaka, samtools, etc.), see `environment.yml`.
 
 2. Download the pipeline and test it on a minimal dataset with a single command.
 
