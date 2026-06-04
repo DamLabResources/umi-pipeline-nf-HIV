@@ -101,6 +101,7 @@
         "rev_context": { "type": "string", "default": "AGTGATCGAGTCAGTGCGAGTG", "description": "Reverse UVP primer sequence (Reverse complement)." },
         "use_context": { "type": "boolean", "default": false, "description": "Use primer context sequences for UMI detection." },
         "adapter_length": { "type": "integer", "default": 100, "description": "Length of adapter trimming." },
+        "max_query_length": { "type": "integer", "default": null, "description": "Override long-read filter threshold for SPLIT_READS (default: derived from BED region size)." },
         "min_length": { "type": "integer", "default": 40, "description": "Minimum combined UMI length." },
         "max_length": { "type": "integer", "default": 60, "description": "Maximum combined UMI length." },
         "minimap2_param": { "type": "string", "default": "-ax map-ont -k 13 --MD", "description": "Parameters for minimap2 aligner." },
