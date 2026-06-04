@@ -13,6 +13,7 @@ process DETECT_UMI_CONSENSUS_FASTQ {
 
     script:
     def write_report = params.write_reports ? "--tsv" : ""
+    def use_context = params.use_context ? "--use_context" : ""
 
     """
         python ${umi_extract_python} \
@@ -24,6 +25,7 @@ process DETECT_UMI_CONSENSUS_FASTQ {
         --adapter_length ${params.adapter_length} \
         --output_format ${params.output_format} \
         --output_filename ${fastq.baseName}_umis \
+        ${use_context} \
         ${write_report} \
         -o ./ ${fastq}
     """
